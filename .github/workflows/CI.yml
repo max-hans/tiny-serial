@@ -105,6 +105,9 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Authenticate with NPM
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -112,20 +115,18 @@ jobs:
 
       - name: Create NPM directories
         run: bun x napi create-npm-dirs
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Move artifacts
         run: bun run artifacts
-
 
       - name: Publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          # Write auth right before publishing so nothing can overwrite it
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-          echo "provenance=true" >> ~/.npmrc
-
+          npm config set provenance true
           # Check commit message for version tag
           COMMIT_MSG=$(git log -1 --pretty=%B)
           if echo "$COMMIT_MSG" | grep -q "^[0-9]\+\.[0-9]\+\.[0-9]\+$"; then
