@@ -107,7 +107,9 @@ jobs:
 
       - name: Authenticate with NPM
         # This MUST happen before 'napi create-npm-dirs'
-        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          echo "provenance=true" >> ~/.npmrc
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -127,7 +129,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          npm config set provenance true
           # Check commit message for version tag
           COMMIT_MSG=$(git log -1 --pretty=%B)
           if echo "$COMMIT_MSG" | grep -q "^[0-9]\+\.[0-9]\+\.[0-9]\+$"; then
