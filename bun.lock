@@ -9,6 +9,9 @@
         "@emnapi/runtime": "^1.5.0",
         "@napi-rs/cli": "^3.2.0",
         "@oxc-node/core": "^0.0.35",
+        "@serialport/parser-byte-length": "^13.0.0",
+        "@serialport/parser-readline": "^13.0.0",
+        "@serialport/parser-regex": "^13.0.0",
         "@taplo/cli": "^0.7.0",
         "@tybys/wasm-util": "^0.10.0",
         "@types/bun": "^1.3.11",
@@ -277,6 +280,14 @@
     "@oxlint/binding-win32-x64-msvc": ["@oxlint/binding-win32-x64-msvc@1.58.0", "", { "os": "win32", "cpu": "x64" }, "sha512-bCn5rbiz5My+Bj7M09sDcnqW0QJyINRVxdZ65x1/Y2tGrMwherwK/lpk+HRQCKvXa8pcaQdF5KY5j54VGZLwNg=="],
 
     "@rollup/pluginutils": ["@rollup/pluginutils@5.3.0", "", { "dependencies": { "@types/estree": "^1.0.0", "estree-walker": "^2.0.2", "picomatch": "^4.0.2" }, "peerDependencies": { "rollup": "^1.20.0||^2.0.0||^3.0.0||^4.0.0" }, "optionalPeers": ["rollup"] }, "sha512-5EdhGZtnu3V88ces7s53hhfK5KSASnJZv8Lulpc04cWO3REESroJXg73DFsOmgbU2BhwV0E20bu2IDZb3VKW4Q=="],
+
+    "@serialport/parser-byte-length": ["@serialport/parser-byte-length@13.0.0", "", {}, "sha512-32yvqeTAqJzAEtX5zCrN1Mej56GJ5h/cVFsCDPbF9S1ZSC9FWjOqNAgtByseHfFTSTs/4ZBQZZcZBpolt8sUng=="],
+
+    "@serialport/parser-delimiter": ["@serialport/parser-delimiter@13.0.0", "", {}, "sha512-Qqyb0FX1avs3XabQqNaZSivyVbl/yl0jywImp7ePvfZKLwx7jBZjvL+Hawt9wIG6tfq6zbFM24vzCCK7REMUig=="],
+
+    "@serialport/parser-readline": ["@serialport/parser-readline@13.0.0", "", { "dependencies": { "@serialport/parser-delimiter": "13.0.0" } }, "sha512-dov3zYoyf0dt1Sudd1q42VVYQ4WlliF0MYvAMA3MOyiU1IeG4hl0J6buBA2w4gl3DOCC05tGgLDN/3yIL81gsA=="],
+
+    "@serialport/parser-regex": ["@serialport/parser-regex@13.0.0", "", {}, "sha512-m7HpIf56G5XcuDdA3DB34Z0pJiwxNRakThEHjSa4mG05OnWYv0IG8l2oUyYfuGMowQWaVnQ+8r+brlPxGVH+eA=="],
 
     "@sindresorhus/merge-streams": ["@sindresorhus/merge-streams@4.0.0", "", {}, "sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ=="],
 

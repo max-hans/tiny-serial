@@ -1,4 +1,4 @@
-import { Transform, TransformOptions } from 'node:stream'
+import { Transform, type TransformOptions } from 'node:stream'
 
 export interface ByteLengthParserOptions extends TransformOptions {
   length: number
