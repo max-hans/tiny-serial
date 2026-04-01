@@ -10,7 +10,8 @@
   "exports": {
     ".": {
       "types": "./serial.d.ts",
-      "require": "./serial.js"
+      "require": "./serial.js",
+      "default": "./serial.js"
     },
     "./native": {
       "types": "./index.d.ts",

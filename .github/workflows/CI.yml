@@ -131,8 +131,16 @@ jobs:
           # Check commit message for version tag
           COMMIT_MSG=$(git log -1 --pretty=%B)
           if echo "$COMMIT_MSG" | grep -q "^[0-9]\+\.[0-9]\+\.[0-9]\+$"; then
+            # Publish platform packages first
+            for dir in npm/*/; do
+              npm publish "$dir" --access public
+            done
             npm publish --access public
           elif echo "$COMMIT_MSG" | grep -q "^[0-9]\+\.[0-9]\+\.[0-9]\+"; then
+            # Publish platform packages first
+            for dir in npm/*/; do
+              npm publish "$dir" --tag next --access public
+            done
             npm publish --tag next --access public
           else
             echo "Not a release commit ($COMMIT_MSG), skipping publish."
