@@ -1,4 +1,4 @@
-# bun-serial
+# tiny-serial
 
 ## project description
 

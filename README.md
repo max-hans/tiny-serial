@@ -1,87 +1,100 @@
-# `@napi-rs/package-template`
+# tiny-serial
 
-![https://github.com/napi-rs/package-template/actions](https://github.com/napi-rs/package-template/workflows/CI/badge.svg)
+tiny-serial is a serial port library for Node.js and Bun. It uses a thin Rust native layer for OS syscalls, all streams, parsers, and the mock API are written in TypeScript.
 
-> Template project for writing node packages with napi-rs.
+## Motivation
 
-# Usage
+This library is strongly inspired by `serialport/node-serialport`. However, it is currently not supported in Bun as documented in various Github issues. The reasons seem to lie in how NodeJS handles native modules (libuv) as opposed to BunJS.
 
-1. Click **Use this template**.
-2. **Clone** your project.
-3. Run `yarn install` to install dependencies.
-4. Run `yarn napi rename -n [@your-scope/package-name] -b [binary-name]` command under the project folder to rename your package.
+**tiny-serial** uses a new, thin layer written in Rust to circumvent this.
 
-## Install this test package
+The library is small and doesn't cover the full functionality of serialport, but comes with all the basic functions you would expect.
 
-```bash
-yarn add @napi-rs/package-template
-```
-
-## Ability
-
-### Build
-
-After `yarn build/npm run build` command, you can see `package-template.[darwin|win32|linux].node` file in project root. This is the native addon built from [lib.rs](./src/lib.rs).
-
-### Test
-
-With [ava](https://github.com/avajs/ava), run `yarn test/npm run test` to testing native addon. You can also switch to another testing framework if you want.
-
-### CI
-
-With GitHub Actions, each commit and pull request will be built and tested automatically in [`node@20`, `@node22`] x [`macOS`, `Linux`, `Windows`] matrix. You will never be afraid of the native addon broken in these platforms.
-
-### Release
-
-Release native package is very difficult in old days. Native packages may ask developers who use it to install `build toolchain` like `gcc/llvm`, `node-gyp` or something more.
-
-With `GitHub actions`, we can easily prebuild a `binary` for major platforms. And with `N-API`, we should never be afraid of **ABI Compatible**.
-
-The other problem is how to deliver prebuild `binary` to users. Downloading it in `postinstall` script is a common way that most packages do it right now. The problem with this solution is it introduced many other packages to download binary that has not been used by `runtime codes`. The other problem is some users may not easily download the binary from `GitHub/CDN` if they are behind a private network (But in most cases, they have a private NPM mirror).
-
-In this package, we choose a better way to solve this problem. We release different `npm packages` for different platforms. And add it to `optionalDependencies` before releasing the `Major` package to npm.
-
-`NPM` will choose which native package should download from `registry` automatically. You can see [npm](./npm) dir for details. And you can also run `yarn add @napi-rs/package-template` to see how it works.
-
-## Develop requirements
-
-- Install the latest `Rust`
-- Install `Node.js@10+` which fully supported `Node-API`
-- Install `yarn@1.x`
-
-## Test in local
-
-- yarn
-- yarn build
-- yarn test
-
-And you will see:
+## Install
 
 ```bash
-$ ava --verbose
-
-  ✔ sync function from native code
-  ✔ sleep function from native code (201ms)
-  ─
-
-  2 tests passed
-✨  Done in 1.12s.
+npm install tiny-serial
+yarn install tiny-serial
+pnpm install tiny-serial
+bun add tiny-serial
 ```
 
-## Release package
+## Usage
 
-Ensure you have set your **NPM_TOKEN** in the `GitHub` project setting.
+```ts
+import { SerialPort, ReadlineParser } from 'tiny-serial'
 
-In `Settings -> Secrets`, add **NPM_TOKEN** into it.
+const port = new SerialPort({ path: '/dev/ttyUSB0', baudRate: 9600 })
+const parser = port.pipe(new ReadlineParser({ delimiter: '\n' }))
 
-When you want to release the package:
+parser.on('data', (line) => console.log(line))
+
+await port.write(Buffer.from('hello\n'))
+await port.close()
+```
+
+## API
+
+### `new SerialPort(options)`
+
+```ts
+export interface SerialPortOptions {
+  path: string
+  baudRate: number
+  dataBits?: 5 | 6 | 7 | 8
+  stopBits?: 1 | 1.5 | 2
+  parity?: 'none' | 'odd' | 'even' | 'mark' | 'space'
+  rtscts?: boolean
+  xon?: boolean
+  xoff?: boolean
+  autoOpen?: boolean
+}
+```
+
+**Methods:** `open()`, `close()`, `write(data)`, `setPin(pin, value)`, `listPorts()`
+
+### Parsers
+
+- **ReadlineParser**: Split on a delimiter string (default `\n`)
+- **ByteLengthParser**: Emit fixed-size chunks
+- **RegexParser**: Split on a regex match
+- **InterByteTimeoutParser**: Emit after a silence gap (ms)
+
+### `MockSerialPort`
+
+Drop-in replacement with no native dependencies — use in tests and CI.
+
+```ts
+import { MockSerialPort } from 'tiny-serial'
+
+const mock = new MockSerialPort({ path: '/dev/mock', baudRate: 9600 })
+mock.simulateData(Buffer.from('hello\n'))
+```
+
+## Development
 
 ```bash
-npm version [<newversion> | major | minor | patch | premajor | preminor | prepatch | prerelease [--preid=<prerelease-id>] | from-git]
-
-git push
+bun run build:debug   # Rust (debug) + TypeScript
+bun run test          # AVA tests (Node)
+bun run test:bun      # bun test
+bun run bench         # parser benchmarks
 ```
 
-GitHub actions will do the rest job for you.
+Hardware tests require `socat`: `./scripts/test-hardware.sh`
 
-> WARN: Don't run `npm publish` manually.
+## Performance
+
+Parser benchmarks vs. the `serialport` package:
+
+|     | Task name                                              | Latency avg (ns) | Latency med (ns) | Throughput avg (ops/s) | Throughput med (ops/s) | Samples |
+| --- | ------------------------------------------------------ | ---------------- | ---------------- | ---------------------- | ---------------------- | ------- |
+| 0   | tiny-serial ReadlineParser — 100 lines × 64 B          | 51297 ± 2.48%    | 47084 ± 1251.0   | 20640 ± 0.13%          | 21239 ± 579            | 19495   |
+| 1   | serialport ReadlineParser — 100 lines × 64 B           | 106603 ± 3.73%   | 98959 ± 5041.0   | 9921 ± 0.22%           | 10105 ± 519            | 9381    |
+| 2   | tiny-serial ByteLengthParser — 1000 B / 8-byte packets | 9253.0 ± 5.55%   | 8083.0 ± 500.00  | 119869 ± 0.08%         | 123716 ± 8140          | 108074  |
+| 3   | serialport ByteLengthParser — 1000 B / 8-byte packets  | 9155.4 ± 1.62%   | 8458.0 ± 500.00  | 114533 ± 0.08%         | 118231 ± 6769          | 109226  |
+| 4   | tiny-serial RegexParser — 100 lines × 64 B             | 22288 ± 1.02%    | 20875 ± 1292.0   | 46899 ± 0.11%          | 47904 ± 3051           | 44868   |
+| 5   | serialport RegexParser — 100 lines × 64 B              | 28545 ± 0.72%    | 26875 ± 791.00   | 36010 ± 0.10%          | 37209 ± 1119           | 35033   |
+
+## License
+
+MIT

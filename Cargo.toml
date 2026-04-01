@@ -1,8 +1,8 @@
 
 [package]
-authors = ["LongYinan <lynweklm@gmail.com>"]
+authors = ["Maximilian Hans <main@i-like-robots.com>"]
 edition = "2021"
-name = "bun_serial"
+name = "tiny-serial"
 version = "0.1.0"
 
 [lib]

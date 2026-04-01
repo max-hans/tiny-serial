@@ -8,17 +8,15 @@ import { RegexParser as SpRegexParser } from '@serialport/parser-regex'
 // Synthetic data: 100 newline-delimited lines of 64 bytes each
 const LINE = Buffer.alloc(63, 0x41) // 63 x 'A'
 const NEWLINE = Buffer.from('\n')
-const CHUNK_READLINE = Buffer.concat(
-  Array.from({ length: 100 }, () => Buffer.concat([LINE, NEWLINE])),
-)
+const CHUNK_READLINE = Buffer.concat(Array.from({ length: 100 }, () => Buffer.concat([LINE, NEWLINE])))
 
 // Synthetic data: 1000 bytes for ByteLengthParser (packet size 8)
 const CHUNK_BYTELENGTH = Buffer.alloc(1000, 0x42)
 
-const b = new Bench({ iterations: 500 })
+const b = new Bench({ iterations: 1000 })
 
 // --- ReadlineParser ---
-b.add('bun-serial  ReadlineParser — 100 lines × 64 B', () => {
+b.add('tiny-serial  ReadlineParser — 100 lines × 64 B', () => {
   const parser = new ReadlineParser()
   parser.on('data', () => {})
   parser.write(CHUNK_READLINE)
@@ -31,7 +29,7 @@ b.add('serialport  ReadlineParser — 100 lines × 64 B', () => {
 })
 
 // --- ByteLengthParser ---
-b.add('bun-serial  ByteLengthParser — 1000 B / 8-byte packets', () => {
+b.add('tiny-serial  ByteLengthParser — 1000 B / 8-byte packets', () => {
   const parser = new ByteLengthParser({ length: 8 })
   parser.on('data', () => {})
   parser.write(CHUNK_BYTELENGTH)
@@ -44,7 +42,7 @@ b.add('serialport  ByteLengthParser — 1000 B / 8-byte packets', () => {
 })
 
 // --- RegexParser ---
-b.add('bun-serial  RegexParser — 100 lines × 64 B', () => {
+b.add('tiny-serial  RegexParser — 100 lines × 64 B', () => {
   const parser = new RegexParser({ regex: /[^\n]+\n/ })
   parser.on('data', () => {})
   parser.write(CHUNK_READLINE)

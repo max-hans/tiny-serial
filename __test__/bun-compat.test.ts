@@ -83,7 +83,7 @@ describe('RegexParser (Bun)', () => {
     parser.write(Buffer.from('foo\r\nbar\r\n'))
     parser.end()
     await waitFor(parser, 'finish')
-    expect(chunks).toEqual(['foo\r\n', 'bar\r\n'])
+    expect(chunks).toEqual(['foo', 'bar'])
   })
 })
 

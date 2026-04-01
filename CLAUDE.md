@@ -1,6 +1,6 @@
-# bun-serial
+# tiny-serial
 
-Cross-runtime serial port library (Node.js + Bun). "Thin Native, Fat TypeScript": Rust handles only OS syscalls; TypeScript owns streams, parsers, and the mock API.
+tiny-serial is a serial port library for Node.js and Bun. It uses a thin Rust native layer for OS syscalls, all streams, parsers, and the mock API are written in TypeScript.
 
 ## Architecture
 

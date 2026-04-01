@@ -1,7 +1,7 @@
 {
-  "name": "bun-serial",
+  "name": "tiny-serial",
   "version": "1.0.0",
-  "description": "Template project for writing node package with napi-rs",
+  "description": "A small serialport library with native Rust bindings",
   "main": "index.js",
   "exports": {
     ".": {
@@ -36,7 +36,7 @@
     "dist/"
   ],
   "napi": {
-    "binaryName": "bun-serial",
+    "binaryName": "tiny-serial",
     "targets": [
       "x86_64-pc-windows-msvc",
       "x86_64-apple-darwin",
@@ -64,7 +64,7 @@
     "lint": "oxlint .",
     "prepublishOnly": "napi prepublish -t npm",
     "test": "ava",
-    "test:bun": "bun test __test__/bun-compat.test.ts",
+    "test:bun": "bun --bun test __test__/bun-compat.test.ts",
     "preversion": "napi build --platform && git add .",
     "version": "napi version",
     "prepare": "husky"
