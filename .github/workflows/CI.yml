@@ -91,6 +91,9 @@ jobs:
         with:
           path: artifacts
 
+      - name: Create NPM directories
+        run: npx napi create-npm-dirs
+
       - name: Move artifacts
         run: bun run artifacts
 
