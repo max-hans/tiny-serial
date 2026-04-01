@@ -1,6 +1,6 @@
 {
   "name": "tiny-serial",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A small serialport library with native Rust bindings",
   "main": "index.js",
   "homepage": "https://github.com/max-hans/tiny-serial",
@@ -57,10 +57,10 @@
     ]
   },
   "optionalDependencies": {
-    "tiny-serial-darwin-x64": "1.0.1",
-    "tiny-serial-darwin-arm64": "1.0.1",
-    "tiny-serial-linux-x64-gnu": "1.0.1",
-    "tiny-serial-win32-x64-msvc": "1.0.1"
+    "tiny-serial-darwin-x64": "1.0.2",
+    "tiny-serial-darwin-arm64": "1.0.2",
+    "tiny-serial-linux-x64-gnu": "1.0.2",
+    "tiny-serial-win32-x64-msvc": "1.0.2"
   },
   "engines": {
     "node": ">= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0"
