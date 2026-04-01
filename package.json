@@ -3,6 +3,10 @@
   "version": "1.0.1",
   "description": "A small serialport library with native Rust bindings",
   "main": "index.js",
+  "homepage": "https://github.com/max-hans/tiny-serial",
+  "bugs": {
+    "url": "https://github.com/max-hans/tiny-serial/issues"
+  },
   "exports": {
     ".": {
       "types": "./serial.d.ts",
@@ -15,11 +19,18 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/napi-rs/package-template.git"
+    "url": "git+ssh://git@github.com:max-hans/tiny-serial.git"
   },
   "license": "MIT",
   "browser": "browser.js",
   "keywords": [
+    "node",
+    "bun",
+    "bunjs",
+    "javascript",
+    "typescript",
+    "serialport",
+    "robotics",
     "napi-rs",
     "NAPI",
     "N-API",

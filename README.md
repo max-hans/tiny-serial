@@ -2,6 +2,8 @@
 
 tiny-serial is a serial port library for Node.js that also works in [Bun](https://bun.sh). It uses a thin native layer written in Rust for OS syscalls. All streams, parsers, and the mock API are written in TypeScript.
 
+![npm version](https://img.shields.io/npm/v/tiny-serial?color=red)
+
 ## Motivation
 
 This library is strongly inspired by `serialport/node-serialport`. However, it is currently not supported in Bun as documented in various Github issues. The reasons seem to lie in how NodeJS handles native modules (libuv) as opposed to Bun.
