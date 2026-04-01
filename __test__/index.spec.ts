@@ -1,8 +1,10 @@
 import test from 'ava'
+import { NativeSerialPort, listPorts } from '../index'
 
-import { plus100 } from '../index'
+test('NativeSerialPort class is exported from native binding', (t) => {
+  t.is(typeof NativeSerialPort, 'function')
+})
 
-test('sync function from native code', (t) => {
-  const fixture = 42
-  t.is(plus100(fixture), fixture + 100)
+test('listPorts function is exported from native binding', (t) => {
+  t.is(typeof listPorts, 'function')
 })
