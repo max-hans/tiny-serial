@@ -59,6 +59,8 @@ jobs:
       - name: Sync Loader
         # Using 'bun x' or calling the local binary directly prevents the Windows 'napi' resolution error
         run: bun x napi prepublish -t npm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build TS
         run: bun run build:ts
