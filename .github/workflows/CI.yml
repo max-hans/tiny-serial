@@ -53,22 +53,16 @@ jobs:
           cargo clippy
           bun run lint
 
-      - name: Build
-        run: |
-          bun run build:native --target ${{ matrix.target }}
-          bun run build:ts
+      - name: Build Native
+        run: bun run build:native --target ${{ matrix.target }}
 
-      - name: Prepublish check
+      - name: Sync Loader
+        # This fixes the "Cannot find native binding" by updating index.js
+        # to match the binary we just built in the root.
         run: npx napi prepublish -t npm
 
-      - name: Prepare bindings for test
-        shell: bash
-        run: |
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            cp *.node ${{ env.APP_NAME }}.node || true
-          else
-            cp *.node ${{ env.APP_NAME }}.node || true
-          fi
+      - name: Build TS
+        run: bun run build:ts
 
       - name: Test
         run: bun run test

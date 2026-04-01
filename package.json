@@ -45,10 +45,10 @@
     ]
   },
   "optionalDependencies": {
-    "tiny-serial-win32-x64-msvc": "1.0.0",
     "tiny-serial-darwin-x64": "1.0.0",
+    "tiny-serial-darwin-arm64": "1.0.0",
     "tiny-serial-linux-x64-gnu": "1.0.0",
-    "tiny-serial-darwin-arm64": "1.0.0"
+    "tiny-serial-win32-x64-msvc": "1.0.0"
   },
   "engines": {
     "node": ">= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0"
