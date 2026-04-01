@@ -9,8 +9,9 @@
     "module": "CommonJS",
     "moduleResolution": "node",
     "ignoreDeprecations": "6.0",
-    "types": ["node"]
+    "removeComments": true,
+    "types": ["node"],
   },
   "include": ["lib/**/*"],
-  "exclude": ["node_modules", "__test__", "benchmark"]
+  "exclude": ["node_modules", "__test__", "benchmark"],
 }
