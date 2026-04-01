@@ -21,7 +21,7 @@ jobs:
             lint: true
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-          - os: macos-15
+          - os: macos-15-intel
             target: x86_64-apple-darwin
           - os: macos-latest
             target: aarch64-apple-darwin
@@ -34,7 +34,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y unzip pkg-config libudev-dev build-essential
 
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
@@ -56,24 +56,32 @@ jobs:
       - name: Build Native
         run: bun run build:native --target ${{ matrix.target }}
 
-      - name: Sync Loader
-        # Using 'bun x' or calling the local binary directly prevents the Windows 'napi' resolution error
-        run: bun x napi prepublish -t npm
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Test
+        shell: bash
+        run: |
+          # 1. Find the built .node file (works on Win/Mac/Linux)
+          BINARY=$(ls *.node | head -n 1)
+
+          if [ -z "$BINARY" ]; then
+            echo "ERROR: No .node binary found!"
+            ls -la
+            exit 1
+          fi
+
+          echo "Force-loading native binary: $BINARY"
+
+          # 2. This env var tells the NAPI-RS loader to skip all its
+          # internal checks and just use this file.
+          export NAPI_RS_NATIVE_LIBRARY_PATH="$(pwd)/$BINARY"
+
+          # 3. Run the tests
+          bun run test
 
       - name: Build TS
         run: bun run build:ts
 
-      - name: Test
-        shell: bash
-        run: |
-          # Point the loader directly to the binary
-          export NAPI_RS_NATIVE_LIBRARY_PATH="$(pwd)/$(ls *.node | head -n 1)"
-          bun run test
-
       - name: Upload artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: bindings-${{ matrix.target }}
           path: '*.node'
@@ -82,6 +90,7 @@ jobs:
   publish:
     name: Publish
     needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -89,7 +98,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
@@ -97,12 +106,12 @@ jobs:
         run: bun install
 
       - name: Download artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
 
       - name: Create NPM directories
-        run: npx napi create-npm-dirs
+        run: bun x napi create-npm-dirs
 
       - name: Move artifacts
         run: bun run artifacts
@@ -113,12 +122,14 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           npm config set provenance true
-          if git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+$"; then
+          # Check commit message for version tag
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          if echo "$COMMIT_MSG" | grep -q "^[0-9]\+\.[0-9]\+\.[0-9]\+$"; then
             echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
             npm publish --access public
-          elif git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+"; then
+          elif echo "$COMMIT_MSG" | grep -q "^[0-9]\+\.[0-9]\+\.[0-9]\+"; then
             echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
             npm publish --tag next --access public
           else
-            echo "Not a release commit, skipping publish."
+            echo "Not a release commit ($COMMIT_MSG), skipping publish."
           fi
