@@ -41,6 +41,7 @@ export class MockSerialPort extends Duplex {
     this._faults = new Set()
     this._pinState = { CTS: false, DSR: false, DCD: false }
 
+    /* oxlint-disable */
     const self = this
     this.pins = {
       setCTS(value: boolean) {

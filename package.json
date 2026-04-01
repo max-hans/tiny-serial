@@ -126,5 +126,11 @@
     "singleQuote": true,
     "arrowParens": "always"
   },
-  "packageManager": "bun@1.3.2"
+  "packageManager": "bun@1.3.2",
+  "optionalDependencies": {
+    "tiny-serial-win32-x64-msvc": "1.0.0",
+    "tiny-serial-darwin-x64": "1.0.0",
+    "tiny-serial-linux-x64-gnu": "1.0.0",
+    "tiny-serial-darwin-arm64": "1.0.0"
+  }
 }
