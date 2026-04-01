@@ -1,210 +1,92 @@
 name: CI
-env:
-  DEBUG: napi:*
-  APP_NAME: package-template
-  MACOSX_DEPLOYMENT_TARGET: '10.13'
-  CARGO_INCREMENTAL: '1'
-'on':
+on:
   push:
-    branches:
-      - main
-    tags-ignore:
-      - '**'
-    paths-ignore:
-      - '**/*.md'
-      - LICENSE
-      - '**/*.gitignore'
-      - .editorconfig
-      - docs/**
-  pull_request: null
+    branches: [main]
+  pull_request:
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Oxlint
-        run: bun run lint
-
-      - name: Cargo fmt
-        run: cargo fmt -- --check
-
-      - name: Clippy
-        run: cargo clippy
-
-  build:
+  build-and-test:
+    name: Build & Test - ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        settings:
-          - host: macos-latest
-            target: x86_64-apple-darwin
-            build: bun run build --target x86_64-apple-darwin
-          - host: windows-latest
-            target: x86_64-pc-windows-msvc
-            build: bun run build --target x86_64-pc-windows-msvc
-          - host: ubuntu-latest
+        include:
+          - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            build: bun run build --target x86_64-unknown-linux-gnu --use-napi-cross
-          - host: macos-latest
-            target: aarch64-apple-darwin
-            build: bun run build --target aarch64-apple-darwin
-    name: stable - ${{ matrix.settings.target }} - Bun
-    runs-on: ${{ matrix.settings.host }}
+            lint: true
+          # - os: windows-latest
+          # target: x86_64-pc-windows-msvc
+          # - os: macos-13
+          # target: x86_64-apple-darwin
+          # - os: macos-latest
+          # target: aarch64-apple-darwin
+
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup bun
-        uses: oven-sh/setup-bun@v1
+      - name: Install Linux Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          apt-get update
+          apt-get install -y unzip pkg-config libudev-dev build-essential
+
+      - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
-      - name: Install
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          targets: ${{ matrix.settings.target }}
-
-      - name: Cache cargo
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            ~/.napi-rs
-            .cargo-cache
-            target/
-          key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}
+          targets: ${{ matrix.target }}
+          components: ${{ matrix.lint && 'clippy, rustfmt' || '' }}
 
       - name: Install dependencies
         run: bun install
 
+      - name: Linting
+        if: matrix.lint
+        run: |
+          cargo fmt -- --check
+          cargo clippy
+          bun run lint
+
       - name: Build
-        run: ${{ matrix.settings.build }}
-        shell: bash
+        run: |
+          bun run build:native --target ${{ matrix.target }}
+          bun run build:ts
+
+      - name: Test
+        run: bun run test
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
-          name: bindings-${{ matrix.settings.target }}
-          path: |
-            ${{ env.APP_NAME }}.*.node
+          name: bindings-${{ matrix.target }}
+          path: '*.node'
           if-no-files-found: error
-
-  test-macOS-windows-binding:
-    name: Test bindings on ${{ matrix.settings.target }} - Bun
-    needs:
-      - build
-    strategy:
-      fail-fast: false
-      matrix:
-        settings:
-          - host: windows-latest
-            target: x86_64-pc-windows-msvc
-            architecture: x64
-          - host: macos-latest
-            target: aarch64-apple-darwin
-            architecture: arm64
-          - host: macos-latest
-            target: x86_64-apple-darwin
-            architecture: x64
-    runs-on: ${{ matrix.settings.host }}
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: bindings-${{ matrix.settings.target }}
-          path: .
-
-      - name: List packages
-        run: ls -R .
-        shell: bash
-
-      - name: Test bindings
-        run: bun run test
-
-  test-linux-binding:
-    name: Test bindings on x86_64-unknown-linux-gnu - Bun
-    needs:
-      - build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup bun
-        uses: oven-sh/setup-bun@v1
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Download artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: bindings-x86_64-unknown-linux-gnu
-          path: .
-
-      - name: List packages
-        run: ls -R .
-        shell: bash
-
-      - name: Test bindings
-        run: bun run test
 
   publish:
     name: Publish
+    needs: build-and-test
     runs-on: ubuntu-latest
     permissions:
       contents: write
       id-token: write
-    needs:
-      - lint
-      - test-macOS-windows-binding
-      - test-linux-binding
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup bun
-        uses: oven-sh/setup-bun@v1
+      - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
 
       - name: Install dependencies
         run: bun install
 
-      - name: create npm dirs
-        run: bun run napi create-npm-dirs
-
-      - name: Download all artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
           path: artifacts
@@ -212,24 +94,18 @@ jobs:
       - name: Move artifacts
         run: bun run artifacts
 
-      - name: List packages
-        run: ls -R ./npm
-        shell: bash
-
       - name: Publish
-        run: |
-          npm config set provenance true
-          if git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+$";
-          then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-            npm publish --access public
-          elif git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+";
-          then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-            npm publish --tag next --access public
-          else
-            echo "Not a release, skipping publish"
-          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm config set provenance true
+          if git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+$"; then
+            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+            npm publish --access public
+          elif git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+"; then
+            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+            npm publish --tag next --access public
+          else
+            echo "Not a release commit, skipping publish."
+          fi

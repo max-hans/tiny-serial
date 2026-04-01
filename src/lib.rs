@@ -65,6 +65,12 @@ pub struct NativeSerialPort {
   reader_thread: Mutex<Option<thread::JoinHandle<()>>>,
 }
 
+impl Default for NativeSerialPort {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
 #[napi]
 impl NativeSerialPort {
   #[napi(constructor)]
