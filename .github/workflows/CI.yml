@@ -58,6 +58,15 @@ jobs:
           bun run build:native --target ${{ matrix.target }}
           bun run build:ts
 
+      - name: Prepare bindings for test
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            cp *.node ${{ env.APP_NAME }}.node || true
+          else
+            cp *.node ${{ env.APP_NAME }}.node || true
+          fi
+
       - name: Test
         run: bun run test
 
