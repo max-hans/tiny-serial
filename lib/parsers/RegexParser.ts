@@ -1,49 +1,53 @@
-import { Transform, TransformOptions } from 'node:stream'
+import { Transform, type TransformOptions, type TransformCallback } from 'node:stream'
 
 export interface RegexParserOptions extends TransformOptions {
-  regex: RegExp
+  regex: RegExp | string | Buffer
   encoding?: BufferEncoding
 }
 
 export class RegexParser extends Transform {
-  private _buffer: string
   private _regex: RegExp
-  private _encoding: BufferEncoding
+  private _data: string
 
-  constructor(options: RegexParserOptions) {
-    super(options)
-    if (!options.regex) {
-      throw new TypeError('RegexParser requires a regex option')
+  constructor({ regex, ...options }: RegexParserOptions) {
+    super({
+      ...options,
+      decodeStrings: true, // Native optimization
+      encoding: options.encoding ?? 'utf8',
+    })
+
+    if (regex === undefined || regex === null) {
+      throw new TypeError('"options.regex" must be a regular expression pattern or object')
     }
-    // Ensure regex has the global flag so exec advances lastIndex
-    const flags = options.regex.flags.includes('g') ? options.regex.flags : options.regex.flags + 'g'
-    this._regex = new RegExp(options.regex.source, flags)
-    this._encoding = options.encoding ?? 'utf8'
-    this._buffer = ''
+
+    // Prepare regex once in constructor
+    this._regex = regex instanceof RegExp ? regex : new RegExp(regex.toString())
+    this._data = ''
   }
 
-  _transform(chunk: Buffer, _encoding: BufferEncoding, callback: () => void): void {
-    this._buffer += chunk.toString(this._encoding)
-    let match: RegExpExecArray | null
-    let lastIndex = 0
-    this._regex.lastIndex = 0
-    while ((match = this._regex.exec(this._buffer)) !== null) {
-      this.push(this._buffer.substring(lastIndex, match.index + match[0].length))
-      lastIndex = match.index + match[0].length
-      if (match[0].length === 0) {
-        // Avoid infinite loop on zero-length match
-        this._regex.lastIndex++
+  _transform(chunk: string, _encoding: string, cb: TransformCallback) {
+    const data = this._data + chunk
+    const parts = data.split(this._regex)
+
+    // Save remainder
+    this._data = parts.pop() ?? ''
+
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i]
+      // Only push non-empty strings (Matches competitor behavior)
+      if (part.length > 0) {
+        this.push(part)
       }
     }
-    this._buffer = this._buffer.substring(lastIndex)
-    callback()
+
+    cb()
   }
 
-  _flush(callback: () => void): void {
-    if (this._buffer.length > 0) {
-      this.push(this._buffer)
-      this._buffer = ''
+  _flush(cb: TransformCallback) {
+    if (this._data.length > 0) {
+      this.push(this._data)
+      this._data = ''
     }
-    callback()
+    cb()
   }
 }

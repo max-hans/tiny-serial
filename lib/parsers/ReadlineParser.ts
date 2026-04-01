@@ -1,4 +1,4 @@
-import { Transform, TransformOptions } from 'node:stream'
+import { Transform, type TransformOptions } from 'node:stream'
 
 export interface ReadlineParserOptions extends TransformOptions {
   delimiter?: string | Buffer
@@ -14,7 +14,8 @@ export class ReadlineParser extends Transform {
   constructor(options: ReadlineParserOptions = {}) {
     super(options)
     const delimiter = options.delimiter ?? '\n'
-    this._delimiter = typeof delimiter === 'string' ? Buffer.from(delimiter, options.encoding ?? 'utf8') : delimiter
+    this._delimiter =
+      typeof delimiter === 'string' ? Buffer.from(delimiter, (options.encoding as BufferEncoding) ?? 'utf8') : delimiter
     this._includeDelimiter = options.includeDelimiter ?? false
     this._buffer = Buffer.alloc(0)
     if (this._delimiter.length === 0) {
@@ -23,14 +24,33 @@ export class ReadlineParser extends Transform {
   }
 
   _transform(chunk: Buffer, _encoding: BufferEncoding, callback: () => void): void {
-    this._buffer = Buffer.concat([this._buffer, chunk])
-    let position: number
-    while ((position = this._buffer.indexOf(this._delimiter)) !== -1) {
-      const end = position + (this._includeDelimiter ? this._delimiter.length : 0)
-      const line = this._buffer.subarray(0, end)
-      this._buffer = this._buffer.subarray(position + this._delimiter.length)
-      this.push(line)
+    // 1. Combine leftover from previous tick
+    const data = this._buffer.length === 0 ? chunk : Buffer.concat([this._buffer, chunk])
+
+    const delimiter = this._delimiter
+    const delimLen = delimiter.length
+    const includeDelim = this._includeDelimiter
+
+    let searchIndex = 0
+    let cursor = 0
+
+    // 2. Linear scan: Use indexOf with a start offset to avoid re-slicing
+    while (true) {
+      const position = data.indexOf(delimiter, searchIndex)
+      if (position === -1) break
+
+      // Calculate where the emitted chunk ends
+      const end = position + (includeDelim ? delimLen : 0)
+      this.push(data.subarray(cursor, end))
+
+      // Move the cursor to the start of the NEXT potential line
+      cursor = position + delimLen
+      searchIndex = cursor
     }
+
+    // 3. One single slice for the leftover data
+    this._buffer = cursor < data.length ? data.subarray(cursor) : Buffer.alloc(0)
+
     callback()
   }
 

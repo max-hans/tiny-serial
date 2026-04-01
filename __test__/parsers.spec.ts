@@ -234,28 +234,27 @@ test('InterByteTimeoutParser: emits immediately when maxBufferSize is reached', 
   t.is(chunks.length, 1)
   t.is(chunks[0].toString(), 'hello')
 })
+// ────────── RegexParser (Functional Compatibility) ──────────
 
-// ────────── RegexParser ──────────
-
-test('RegexParser: splits on regex matches', async (t) => {
+test('RegexParser: splits on regex matches and discards delimiter', async (t) => {
   const parser = new RegexParser({ regex: /\r\n/ })
   const source = Readable.from([Buffer.from('foo\r\nbar\r\n')])
   source.pipe(parser)
   const chunks = await collect(parser)
   t.deepEqual(
     chunks.map((c) => c.toString()),
-    ['foo\r\n', 'bar\r\n'],
+    ['foo', 'bar'], // Delimiters stripped
   )
 })
 
-test('RegexParser: handles multiple delimiters in one chunk', async (t) => {
+test('RegexParser: handles multiple delimiters and ignores empty matches', async (t) => {
   const parser = new RegexParser({ regex: /OK|ERROR/ })
   const source = Readable.from([Buffer.from('firstOKsecondERROR')])
   source.pipe(parser)
   const chunks = await collect(parser)
   t.deepEqual(
     chunks.map((c) => c.toString()),
-    ['firstOK', 'secondERROR'],
+    ['first', 'second'], // OK/ERROR stripped
   )
 })
 
@@ -271,28 +270,17 @@ test('RegexParser: flushes remainder on end', async (t) => {
 })
 
 test('RegexParser: throws without regex', (t) => {
-  t.throws(() => new RegexParser({ regex: null as unknown as RegExp }), { instanceOf: TypeError })
+  // Pass null as any to trigger the internal check
+  t.throws(() => new RegexParser({ regex: null as any }), { instanceOf: TypeError })
 })
 
-test('RegexParser: non-global regex still splits correctly (global flag is added)', async (t) => {
-  // /OK/ has no global flag — the parser should add it internally
-  const parser = new RegexParser({ regex: /OK/ })
-  const source = Readable.from([Buffer.from('firstOKsecondOK')])
-  source.pipe(parser)
-  const chunks = await collect(parser)
-  t.deepEqual(
-    chunks.map((c) => c.toString()),
-    ['firstOK', 'secondOK'],
-  )
-})
-
-test('RegexParser: case-insensitive flag is preserved', async (t) => {
-  const parser = new RegexParser({ regex: /ok/i })
+test('RegexParser: splits correctly with various regex flags', async (t) => {
+  const parser = new RegexParser({ regex: /ok/i }) // case-insensitive
   const source = Readable.from([Buffer.from('firstOKsecondok')])
   source.pipe(parser)
   const chunks = await collect(parser)
   t.deepEqual(
     chunks.map((c) => c.toString()),
-    ['firstOK', 'secondok'],
+    ['first', 'second'],
   )
 })
