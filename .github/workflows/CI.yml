@@ -58,6 +58,9 @@ jobs:
           bun run build:native --target ${{ matrix.target }}
           bun run build:ts
 
+      - name: Prepublish check
+        run: npx napi prepublish -t npm
+
       - name: Prepare bindings for test
         shell: bash
         run: |
