@@ -57,15 +57,18 @@ jobs:
         run: bun run build:native --target ${{ matrix.target }}
 
       - name: Sync Loader
-        # This fixes the "Cannot find native binding" by updating index.js
-        # to match the binary we just built in the root.
-        run: npx napi prepublish -t npm
+        # Using 'bun x' or calling the local binary directly prevents the Windows 'napi' resolution error
+        run: bun x napi prepublish -t npm
 
       - name: Build TS
         run: bun run build:ts
 
       - name: Test
-        run: bun run test
+        shell: bash
+        run: |
+          # Point the loader directly to the binary
+          export NAPI_RS_NATIVE_LIBRARY_PATH="$(pwd)/$(ls *.node | head -n 1)"
+          bun run test
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

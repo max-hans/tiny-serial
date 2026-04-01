@@ -24,7 +24,7 @@ function waitFor(emitter: NodeJS.EventEmitter, event: string, timeout = 2000): P
   })
 }
 
-test('listPorts: returns at least one entry', async (t) => {
+test.serial('listPorts: returns at least one entry', async (t) => {
   const ports = await SerialPort.list()
   t.log('ports:', ports.map((p) => p.path).join(', ') || '(none)')
   t.true(Array.isArray(ports))
