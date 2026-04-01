@@ -1,4 +1,4 @@
-import test from 'ava'
+import { test, expect } from 'bun:test'
 import { MockSerialPort } from '../lib/mock/MockSerialPort.js'
 import { ReadlineParser } from '../lib/parsers/ReadlineParser.js'
 import { ByteLengthParser } from '../lib/parsers/ByteLengthParser.js'
@@ -16,42 +16,42 @@ function waitFor(emitter: NodeJS.EventEmitter, event: string, timeout = 500): Pr
 
 // ────────── Basic I/O ──────────
 
-test('MockSerialPort: emits open on autoOpen', async (t) => {
+test('MockSerialPort: emits open on autoOpen', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600 })
   await waitFor(port, 'open')
-  t.true(port.isOpen)
+  expect(port.isOpen).toBe(true)
 })
 
-test('MockSerialPort: write is captured in getWrittenData', async (t) => {
+test('MockSerialPort: write is captured in getWrittenData', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
   port.write(Buffer.from('HELLO'))
-  t.deepEqual(port.getWrittenData(), Buffer.from('HELLO'))
+  expect(port.getWrittenData()).toEqual(Buffer.from('HELLO'))
 })
 
-test('MockSerialPort: multiple writes are concatenated', async (t) => {
+test('MockSerialPort: multiple writes are concatenated', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
   port.write(Buffer.from('A'))
   port.write(Buffer.from('B'))
   port.write(Buffer.from('C'))
-  t.deepEqual(port.getWrittenData(), Buffer.from('ABC'))
+  expect(port.getWrittenData()).toEqual(Buffer.from('ABC'))
 })
 
-test('MockSerialPort: clearWrittenData resets history', async (t) => {
+test('MockSerialPort: clearWrittenData resets history', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
   port.write(Buffer.from('X'))
   port.clearWrittenData()
-  t.deepEqual(port.getWrittenData(), Buffer.from(''))
+  expect(port.getWrittenData()).toEqual(Buffer.from(''))
 })
 
 // ────────── mockReply ──────────
 
-test('MockSerialPort: mockReply sends response when trigger is written', async (t) => {
+test('MockSerialPort: mockReply sends response when trigger is written', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
@@ -60,10 +60,10 @@ test('MockSerialPort: mockReply sends response when trigger is written', async (
   const dataPromise = waitFor(port, 'data')
   port.write(Buffer.from('AT\r'))
   const data = await dataPromise
-  t.deepEqual(data, Buffer.from('OK\r'))
+  expect(data).toEqual(Buffer.from('OK\r'))
 })
 
-test('MockSerialPort: mockReply works with ReadlineParser (fragmentation)', async (t) => {
+test('MockSerialPort: mockReply works with ReadlineParser (fragmentation)', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
@@ -76,22 +76,22 @@ test('MockSerialPort: mockReply works with ReadlineParser (fragmentation)', asyn
   const linePromise = waitFor(parser, 'data', 1000)
   port.write(Buffer.from('AT\r'))
   const line = await linePromise
-  t.is(line.toString(), 'OK')
+  expect((line as any).toString()).toEqual('OK')
 })
 
 // ────────── simulateFault ──────────
 
-test('MockSerialPort: simulateFault disconnect emits close', async (t) => {
+test('MockSerialPort: simulateFault disconnect emits close', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
   const closePromise = waitFor(port, 'close')
   port.simulateFault('disconnect')
   await closePromise
-  t.false(port.isOpen)
+  expect(port.isOpen).toBe(false)
 })
 
-test('MockSerialPort: simulateFault timeout suppresses replies', async (t) => {
+test('MockSerialPort: simulateFault timeout suppresses replies', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
@@ -104,10 +104,10 @@ test('MockSerialPort: simulateFault timeout suppresses replies', async (t) => {
   })
   port.write(Buffer.from('PING'))
   await new Promise((resolve) => setTimeout(resolve, 50))
-  t.false(received)
+  expect(received).toBe(false)
 })
 
-test('MockSerialPort: clearFault re-enables replies', async (t) => {
+test('MockSerialPort: clearFault re-enables replies', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
@@ -118,96 +118,98 @@ test('MockSerialPort: clearFault re-enables replies', async (t) => {
   const dataPromise = waitFor(port, 'data')
   port.write(Buffer.from('PING'))
   const data = await dataPromise
-  t.deepEqual(data, Buffer.from('PONG'))
+  expect(data).toEqual(Buffer.from('PONG'))
 })
 
 // ────────── pins ──────────
 
-test('MockSerialPort: pins.setCTS emits pin-change event', async (t) => {
+test('MockSerialPort: pins.setCTS emits pin-change event', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   const eventPromise = waitFor(port, 'pin-change')
   port.pins.setCTS(true)
   const event = (await eventPromise) as { pin: string; value: boolean }
-  t.is(event.pin, 'CTS')
-  t.true(event.value)
-  t.true(port.pins.getCTS())
+  expect(event.pin).toBe('CTS')
+  expect(event.value).toBe(true)
+  expect(port.pins.getCTS()).toBe(true)
 })
 
-test('MockSerialPort: pins.setDSR and getDSR round-trip', (t) => {
+test('MockSerialPort: pins.setDSR and getDSR round-trip', () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
-  t.false(port.pins.getDSR())
+  expect(port.pins.getDSR()).toBe(false)
   port.pins.setDSR(true)
-  t.true(port.pins.getDSR())
+  expect(port.pins.getDSR()).toBe(true)
 })
 
 // ────────── close ──────────
 
-test('MockSerialPort: close sets isOpen to false and emits close', async (t) => {
+test('MockSerialPort: close sets isOpen to false and emits close', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
-  t.true(port.isOpen)
+  expect(port.isOpen).toBe(true)
   const closePromise = waitFor(port, 'close')
   port.close()
   await closePromise
-  t.false(port.isOpen)
+  expect(port.isOpen).toBe(false)
 })
 
 // ────────── autoOpen / callbacks ──────────
 
-test('MockSerialPort: autoOpen false keeps isOpen false until explicit open', async (t) => {
+test('MockSerialPort: autoOpen false keeps isOpen false until explicit open', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   await new Promise((resolve) => process.nextTick(resolve))
-  t.false(port.isOpen)
+  expect(port.isOpen).toBe(false)
   port.open()
   await waitFor(port, 'open')
-  t.true(port.isOpen)
+  expect(port.isOpen).toBe(true)
 })
 
-test('MockSerialPort: open callback receives null on success', async (t) => {
+test('MockSerialPort: open callback receives null on success', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   const err = await new Promise<Error | null>((resolve) => port.open(resolve))
-  t.is(err, null)
-  t.true(port.isOpen)
+  expect(err).toBe(null)
+  expect(port.isOpen).toBe(true)
 })
 
-test('MockSerialPort: close callback receives null on success', async (t) => {
+test('MockSerialPort: close callback receives null on success', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
   const err = await new Promise<Error | null>((resolve) => port.close(resolve))
-  t.is(err, null)
-  t.false(port.isOpen)
+  expect(err).toBe(null)
+  expect(port.isOpen).toBe(false)
 })
 
-test('MockSerialPort: isOpen transitions false → open → true → close → false', async (t) => {
+test('MockSerialPort: isOpen transitions false → open → true → close → false', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
-  t.false(port.isOpen)
+  expect(port.isOpen).toBe(false)
   port.open()
   await waitFor(port, 'open')
-  t.true(port.isOpen)
+  expect(port.isOpen).toBe(true)
   const closePromise = waitFor(port, 'close')
   port.close()
   await closePromise
-  t.false(port.isOpen)
+  expect(port.isOpen).toBe(false)
 })
 
 // ────────── mockReply edge cases ──────────
 
-test('MockSerialPort: mockReply not triggered when pattern not present in write', async (t) => {
+test('MockSerialPort: mockReply not triggered when pattern not present in write', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
   port.mockReply('PING', 'PONG', 10)
 
   let received = false
-  port.on('data', () => { received = true })
+  port.on('data', () => {
+    received = true
+  })
   port.write(Buffer.from('SOMETHING_ELSE'))
   await new Promise((resolve) => setTimeout(resolve, 50))
-  t.false(received)
+  expect(received).toBe(false)
 })
 
-test('MockSerialPort: multiple mockReply patterns work independently', async (t) => {
+test('MockSerialPort: multiple mockReply patterns work independently', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
@@ -216,22 +218,22 @@ test('MockSerialPort: multiple mockReply patterns work independently', async (t)
 
   const first = waitFor(port, 'data')
   port.write(Buffer.from('ATI'))
-  t.is((await first as Buffer).toString(), 'v1.0')
+  expect(((await first) as Buffer).toString()).toBe('v1.0')
 
   const second = waitFor(port, 'data')
   port.write(Buffer.from('ATZ'))
-  t.is((await second as Buffer).toString(), 'OK')
+  expect(((await second) as Buffer).toString()).toBe('OK')
 })
 
-test('MockSerialPort: mockReply is chainable', (t) => {
+test('MockSerialPort: mockReply is chainable', () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   const result = port.mockReply('a', 'b').mockReply('c', 'd')
-  t.is(result, port)
+  expect(result).toBe(port)
 })
 
 // ────────── simulateFault / clearFault ──────────
 
-test('MockSerialPort: simulateFault fragmentation delivers data one byte at a time', async (t) => {
+test('MockSerialPort: simulateFault fragmentation delivers data one byte at a time', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
@@ -244,11 +246,11 @@ test('MockSerialPort: simulateFault fragmentation delivers data one byte at a ti
   await new Promise((resolve) => setTimeout(resolve, 50))
 
   // Each byte of 'PONG' arrives in its own chunk
-  t.is(chunks.length, 4)
-  t.is(Buffer.concat(chunks).toString(), 'PONG')
+  expect(chunks.length).toBe(4)
+  expect(Buffer.concat(chunks).toString()).toBe('PONG')
 })
 
-test('MockSerialPort: clearFault fragmentation restores bulk delivery', async (t) => {
+test('MockSerialPort: clearFault fragmentation restores bulk delivery', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
@@ -261,39 +263,39 @@ test('MockSerialPort: clearFault fragmentation restores bulk delivery', async (t
   port.write(Buffer.from('PING'))
   await new Promise((resolve) => setTimeout(resolve, 50))
 
-  t.is(chunks.length, 1)
-  t.is(chunks[0].toString(), 'PONG')
+  expect(chunks.length).toBe(1)
+  expect(chunks[0].toString()).toBe('PONG')
 })
 
 // ────────── pins ──────────
 
-test('MockSerialPort: all pins start as false', (t) => {
+test('MockSerialPort: all pins start as false', () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
-  t.false(port.pins.getCTS())
-  t.false(port.pins.getDSR())
-  t.false(port.pins.getDCD())
+  expect(port.pins.getCTS()).toBe(false)
+  expect(port.pins.getDSR()).toBe(false)
+  expect(port.pins.getDCD()).toBe(false)
 })
 
-test('MockSerialPort: setDCD and getDCD round-trip', (t) => {
+test('MockSerialPort: setDCD and getDCD round-trip', () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.pins.setDCD(true)
-  t.true(port.pins.getDCD())
+  expect(port.pins.getDCD()).toBe(true)
   port.pins.setDCD(false)
-  t.false(port.pins.getDCD())
+  expect(port.pins.getDCD()).toBe(false)
 })
 
-test('MockSerialPort: setDSR emits pin-change event', async (t) => {
+test('MockSerialPort: setDSR emits pin-change event', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   const eventPromise = waitFor(port, 'pin-change')
   port.pins.setDSR(true)
   const event = (await eventPromise) as { pin: string; value: boolean }
-  t.is(event.pin, 'DSR')
-  t.true(event.value)
+  expect(event.pin).toBe('DSR')
+  expect(event.value).toBe(true)
 })
 
 // ────────── parser integration ──────────
 
-test('MockSerialPort: piped through ByteLengthParser emits fixed-size packets', async (t) => {
+test('MockSerialPort: piped through ByteLengthParser emits fixed-size packets', async () => {
   const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
   port.open()
   await waitFor(port, 'open')
@@ -308,7 +310,7 @@ test('MockSerialPort: piped through ByteLengthParser emits fixed-size packets', 
   port.write(Buffer.from('go'))
   await new Promise((resolve) => setTimeout(resolve, 50))
 
-  t.is(packets.length, 2)
-  t.is(packets[0].toString(), 'ABC')
-  t.is(packets[1].toString(), 'DEF')
+  expect(packets.length).toBe(2)
+  expect(packets[0].toString()).toBe('ABC')
+  expect(packets[1].toString()).toBe('DEF')
 })
