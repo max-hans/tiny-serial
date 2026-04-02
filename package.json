@@ -20,7 +20,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com:max-hans/tiny-serial.git"
+    "url": "git+ssh://git@github.com/max-hans/tiny-serial.git"
   },
   "license": "MIT",
   "browser": "browser.js",
@@ -53,14 +53,18 @@
       "x86_64-pc-windows-msvc",
       "x86_64-apple-darwin",
       "x86_64-unknown-linux-gnu",
-      "aarch64-apple-darwin"
+      "aarch64-apple-darwin",
+      "aarch64-unknown-linux-gnu",
+      "armv7-unknown-linux-gnueabihf"
     ]
   },
   "optionalDependencies": {
     "tiny-serial-darwin-x64": "1.0.4",
     "tiny-serial-darwin-arm64": "1.0.4",
     "tiny-serial-linux-x64-gnu": "1.0.4",
-    "tiny-serial-win32-x64-msvc": "1.0.4"
+    "tiny-serial-win32-x64-msvc": "1.0.4",
+    "tiny-serial-linux-arm64-gnu": "1.0.4",
+    "tiny-serial-linux-arm-gnueabihf": "1.0.4"
   },
   "engines": {
     "node": ">= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0"
