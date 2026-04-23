@@ -116,6 +116,17 @@ export class SerialPort extends Duplex {
     }
   }
 
+  drain(callback?: (err: Error | null) => void): void {
+    if (!this._native) {
+      callback?.(new Error('Port is not open'))
+      return
+    }
+    this._native
+      .drain()
+      .then(() => callback?.(null))
+      .catch((err: Error) => callback?.(err))
+  }
+
   static async list(): Promise<PortInfo[]> {
     const { listPorts } = await getNative()
     return listPorts() as unknown as PortInfo[]

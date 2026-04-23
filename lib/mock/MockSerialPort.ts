@@ -109,6 +109,10 @@ export class MockSerialPort extends Duplex {
     })
   }
 
+  drain(callback?: (err: Error | null) => void): void {
+    process.nextTick(() => callback?.(null))
+  }
+
   /** Register a declarative request/response pair. */
   mockReply(trigger: Buffer | string, response: Buffer | string, delay = 0): this {
     this._replies.push({ trigger: toBuffer(trigger), response: toBuffer(response), delay })

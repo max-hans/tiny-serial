@@ -9,6 +9,8 @@ export declare class NativeSerialPort {
   open(path: string, baudRate: number, dataCallback: ((err: Error | null, arg: Buffer) => any)): void
   /** Write bytes to the port asynchronously (off the main thread). */
   write(data: Buffer): Promise<unknown>
+  /** Drain the output buffer (blocks until all bytes are transmitted). */
+  drain(): Promise<unknown>
   /** Close the port and signal the background reader thread to exit. */
   close(): void
 }

@@ -49,9 +49,7 @@ echo ""
 export SERIAL_PORT_A SERIAL_PORT_B
 
 if [ "${1:-}" = "--all" ]; then
-  bun --bun run test
+  bun test
 else
-  # Run only the native spec directly so we don't re-run mock/parser tests
-  node --import @oxc-node/core/register \
-    node_modules/.bin/ava __test__/native.spec.ts
+  bun test __test__/native.spec.ts
 fi

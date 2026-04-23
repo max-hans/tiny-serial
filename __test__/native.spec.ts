@@ -185,6 +185,29 @@ test.serial('binary: non-ASCII bytes arrive uncorrupted', async () => {
   await Promise.all([closeA, closeB])
 })
 
+test.serial('drain: resolves after write without error', async () => {
+  if (!hasVirtualPorts) return console.log('skipped: no virtual ports')
+
+  const a = new SerialPort({ path: portA!, baudRate: 0, autoOpen: false })
+  const b = new SerialPort({ path: portB!, baudRate: 0, autoOpen: false })
+  a.on('error', (err) => console.log('port A error:', err.message))
+  b.on('error', (err) => console.log('port B error:', err.message))
+
+  a.open()
+  b.open()
+  await Promise.all([waitFor(a, 'open'), waitFor(b, 'open')])
+
+  await new Promise<void>((resolve, reject) => a.write(Buffer.from('DRAIN_TEST\n'), (err) => (err ? reject(err) : resolve())))
+  const err = await new Promise<Error | null>((resolve) => a.drain(resolve))
+  expect(err).toBe(null)
+
+  const closeA = waitFor(a, 'close')
+  const closeB = waitFor(b, 'close')
+  a.close()
+  b.close()
+  await Promise.all([closeA, closeB])
+})
+
 test.serial('large write: payload larger than the 4 KiB read buffer arrives complete', async () => {
   if (!hasVirtualPorts) return console.log('skipped: no virtual ports')
 

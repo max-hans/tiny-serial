@@ -314,3 +314,21 @@ test('MockSerialPort: piped through ByteLengthParser emits fixed-size packets', 
   expect(packets[0].toString()).toBe('ABC')
   expect(packets[1].toString()).toBe('DEF')
 })
+
+// ────────── drain ──────────
+
+test('MockSerialPort: drain callback receives null on success', async () => {
+  const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
+  port.open()
+  await waitFor(port, 'open')
+  const err = await new Promise<Error | null>((resolve) => port.drain(resolve))
+  expect(err).toBe(null)
+})
+
+test('MockSerialPort: drain resolves even when no data was written', async () => {
+  const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
+  port.open()
+  await waitFor(port, 'open')
+  const err = await new Promise<Error | null>((resolve) => port.drain(resolve))
+  expect(err).toBe(null)
+})

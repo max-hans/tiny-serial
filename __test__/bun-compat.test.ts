@@ -124,6 +124,14 @@ describe('MockSerialPort (Bun)', () => {
     expect(received).toBe(false)
   })
 
+  it('drain resolves with null', async () => {
+    const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
+    port.open()
+    await waitFor(port, 'open')
+    const err = await new Promise<Error | null>((resolve) => port.drain(resolve))
+    expect(err).toBe(null)
+  })
+
   it('pins.setCTS emits pin-change', async () => {
     const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
     const eventPromise = waitFor(port, 'pin-change') as Promise<{ pin: string; value: boolean }>
