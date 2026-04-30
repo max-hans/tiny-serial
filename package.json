@@ -45,7 +45,8 @@
     "browser.js",
     "serial.js",
     "serial.d.ts",
-    "dist/"
+    "dist/",
+    "scripts/check-native.js"
   ],
   "napi": {
     "binaryName": "tiny-serial",
@@ -53,6 +54,7 @@
       "x86_64-pc-windows-msvc",
       "x86_64-apple-darwin",
       "x86_64-unknown-linux-gnu",
+      "x86_64-unknown-linux-musl",
       "aarch64-apple-darwin",
       "aarch64-unknown-linux-gnu",
       "armv7-unknown-linux-gnueabihf"
@@ -61,8 +63,8 @@
   "optionalDependencies": {
     "tiny-serial-darwin-x64": "1.1.0",
     "tiny-serial-darwin-arm64": "1.1.0",
-    "tiny-serial-linux-x64-gnu": "1.1.0",
     "tiny-serial-win32-x64-msvc": "1.1.0",
+    "tiny-serial-linux-x64-gnu": "1.1.0",
     "tiny-serial-linux-arm64-gnu": "1.1.0",
     "tiny-serial-linux-arm-gnueabihf": "1.1.0"
   },
@@ -92,6 +94,7 @@
     "test:bun": "bun --bun test __test__/bun-compat.test.ts",
     "preversion": "napi build --platform && git add .",
     "version": "napi version",
+    "postinstall": "node scripts/check-native.js",
     "prepare": "husky"
   },
   "devDependencies": {

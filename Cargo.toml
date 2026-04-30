@@ -11,7 +11,12 @@ crate-type = ["cdylib"]
 [dependencies]
 napi = { version = "3.0.0", features = ["async", "napi4"] }
 napi-derive = "3.0.0"
+
+[target.'cfg(not(target_env = "musl"))'.dependencies]
 serialport = "4.5"
+
+[target.'cfg(target_env = "musl")'.dependencies]
+serialport = { version = "4.5", default-features = false }
 
 [build-dependencies]
 napi-build = "2"

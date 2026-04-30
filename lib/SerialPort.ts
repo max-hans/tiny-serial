@@ -6,7 +6,16 @@ type NativeModule = typeof import('../index.js')
 let _nativePromise: Promise<NativeModule> | null = null
 function getNative(): Promise<NativeModule> {
   if (!_nativePromise) {
-    _nativePromise = import('../index.js')
+    _nativePromise = import('../index.js').catch((err: Error) => {
+      if (err.message?.includes('Cannot find native binding')) {
+        throw new Error(
+          `tiny-serial: No pre-built binary for ${process.platform}-${process.arch}.\n` +
+            `See https://github.com/max-hans/tiny-serial/issues for help.`,
+          { cause: err },
+        )
+      }
+      throw err
+    })
   }
   return _nativePromise
 }
