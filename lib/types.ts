@@ -7,7 +7,6 @@ export interface SerialPortOptions {
   rtscts?: boolean
   xon?: boolean
   xoff?: boolean
-  autoOpen?: boolean
 }
 
 export interface PortInfo {
@@ -16,3 +15,14 @@ export interface PortInfo {
 }
 
 export type PinName = 'CTS' | 'DTR' | 'RTS' | 'DCD' | 'DSR'
+
+export interface INativeSerialPort {
+  open(path: string, baudRate: number, cb: (err: Error | null, data: Buffer) => void): void
+  write(data: Buffer): Promise<void>
+  drain(): Promise<void>
+  close(): void
+}
+
+export interface INativeSerialPortClass {
+  new (): INativeSerialPort
+}

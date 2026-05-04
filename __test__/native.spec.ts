@@ -13,16 +13,6 @@ const portA = process.env['SERIAL_PORT_A']
 const portB = process.env['SERIAL_PORT_B']
 const hasVirtualPorts = Boolean(portA && portB)
 
-function waitFor(emitter: any, event: string, timeout = 2000): Promise<unknown> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`Timed out waiting for '${event}'`)), timeout)
-    emitter.once(event, (value: unknown) => {
-      clearTimeout(timer)
-      resolve(value)
-    })
-  })
-}
-
 test.serial('listPorts: returns at least one entry', async () => {
   const ports = await SerialPort.list()
   console.log('ports:', ports.map((p) => p.path).join(', ') || '(none)')
@@ -33,30 +23,24 @@ test.serial('loopback: write to port A, read from port B', async () => {
   if (!hasVirtualPorts) return console.log('skipped: no virtual ports')
 
   console.log(`opening ${portA} and ${portB}`)
-  const a = new SerialPort({ path: portA!, baudRate: 0, autoOpen: false })
-  const b = new SerialPort({ path: portB!, baudRate: 0, autoOpen: false })
+  const a = new SerialPort({ path: portA!, baudRate: 0 })
+  const b = new SerialPort({ path: portB!, baudRate: 0 })
   a.on('error', (err) => console.log('port A error:', err.message))
   b.on('error', (err) => console.log('port B error:', err.message))
 
   const parser = new ReadlineParser({ delimiter: '\n' })
   b.pipe(parser)
 
-  a.open()
-  b.open()
-  await Promise.all([waitFor(a, 'open'), waitFor(b, 'open')])
+  await Promise.all([a.open(), b.open()])
   console.log('both ports open')
 
-  const linePromise = waitFor(parser, 'data', 3000)
-  a.write(Buffer.from('HELLO\n'))
+  const linePromise = new Promise<string>((resolve) => parser.once('data', (d: Buffer) => resolve(d.toString())))
+  await a.write(Buffer.from('HELLO\n'))
   const line = await linePromise
-  console.log('received:', String(line))
-  expect(String(line)).toBe('HELLO')
+  console.log('received:', line)
+  expect(line).toBe('HELLO')
 
-  const closeA = waitFor(a, 'close')
-  const closeB = waitFor(b, 'close')
-  a.close()
-  b.close()
-  await Promise.all([closeA, closeB])
+  await Promise.all([a.close(), b.close()])
   console.log('both ports closed')
 })
 
@@ -64,21 +48,18 @@ test.serial('concurrency: 100 rapid writes complete without dropped bytes', asyn
   if (!hasVirtualPorts) return console.log('skipped: no virtual ports')
 
   console.log(`opening ${portA} and ${portB}`)
-  const a = new SerialPort({ path: portA!, baudRate: 0, autoOpen: false })
-  const b = new SerialPort({ path: portB!, baudRate: 0, autoOpen: false })
+  const a = new SerialPort({ path: portA!, baudRate: 0 })
+  const b = new SerialPort({ path: portB!, baudRate: 0 })
   a.on('error', (err) => console.log('port A error:', err.message))
   b.on('error', (err) => console.log('port B error:', err.message))
 
-  a.open()
-  b.open()
-  await Promise.all([waitFor(a, 'open'), waitFor(b, 'open')])
+  await Promise.all([a.open(), b.open()])
   console.log('both ports open, firing 100 writes')
 
   const received: Buffer[] = []
   b.on('data', (chunk: Buffer) => received.push(chunk))
 
-  const writes = Array.from({ length: 100 }, (_, i) => a.write(Buffer.from(`MSG${i}\n`)))
-  await Promise.all(writes.map((p) => (p instanceof Promise ? p : Promise.resolve())))
+  await Promise.all(Array.from({ length: 100 }, (_, i) => a.write(Buffer.from(`MSG${i}\n`))))
 
   await new Promise((resolve) => setTimeout(resolve, 500))
 
@@ -88,11 +69,7 @@ test.serial('concurrency: 100 rapid writes complete without dropped bytes', asyn
     expect(total.includes(`MSG${i}`)).toBe(true)
   }
 
-  const closeA = waitFor(a, 'close')
-  const closeB = waitFor(b, 'close')
-  a.close()
-  b.close()
-  await Promise.all([closeA, closeB])
+  await Promise.all([a.close(), b.close()])
   console.log('both ports closed')
 })
 
@@ -101,32 +78,23 @@ test.serial('teardown: open, read/write, close, reopen without hanging', async (
 
   for (let i = 0; i < 3; i++) {
     console.log(`cycle ${i + 1}: opening ${portA}`)
-    const port = new SerialPort({ path: portA!, baudRate: 0, autoOpen: false })
+    const port = new SerialPort({ path: portA!, baudRate: 0 })
     port.on('error', (err) => console.log(`cycle ${i + 1} error:`, err.message))
 
-    port.open()
-    await waitFor(port, 'open')
+    await port.open()
     console.log(`cycle ${i + 1}: open, writing`)
 
-    await new Promise<void>((resolve, reject) =>
-      port.write(Buffer.from('test'), (err) => (err ? reject(err) : resolve())),
-    )
+    await port.write(Buffer.from('test'))
     console.log(`cycle ${i + 1}: write done, closing`)
 
-    const closePromise = waitFor(port, 'close')
-    port.close()
-    await closePromise
+    await port.close()
     console.log(`cycle ${i + 1}: closed`)
   }
 })
 
-test.serial('error: opening an invalid path emits an error event', async () => {
-  const port = new SerialPort({ path: '/dev/nonexistent_bun_serial_test', baudRate: 0, autoOpen: false })
-  const errPromise = waitFor(port, 'error') as Promise<Error>
-  port.open()
-  const err = await errPromise
-  console.log('error message:', err.message)
-  expect(err.message.length).toBeGreaterThan(0)
+test.serial('error: opening an invalid path rejects and isOpen stays false', async () => {
+  const port = new SerialPort({ path: '/dev/nonexistent_bun_serial_test', baudRate: 0 })
+  await expect(port.open()).rejects.toThrow()
   expect(port.isOpen).toBe(false)
 })
 
@@ -134,105 +102,80 @@ test.serial('bidirectional: write from B, read from A', async () => {
   if (!hasVirtualPorts) return console.log('skipped: no virtual ports')
 
   console.log(`opening ${portA} and ${portB}`)
-  const a = new SerialPort({ path: portA!, baudRate: 0, autoOpen: false })
-  const b = new SerialPort({ path: portB!, baudRate: 0, autoOpen: false })
+  const a = new SerialPort({ path: portA!, baudRate: 0 })
+  const b = new SerialPort({ path: portB!, baudRate: 0 })
   a.on('error', (err) => console.log('port A error:', err.message))
   b.on('error', (err) => console.log('port B error:', err.message))
 
   const parser = new ReadlineParser({ delimiter: '\n' })
   a.pipe(parser)
 
-  a.open()
-  b.open()
-  await Promise.all([waitFor(a, 'open'), waitFor(b, 'open')])
+  await Promise.all([a.open(), b.open()])
 
-  const linePromise = waitFor(parser, 'data', 3000)
-  b.write(Buffer.from('FROM_B\n'))
+  const linePromise = new Promise<string>((resolve) => parser.once('data', (d: Buffer) => resolve(d.toString())))
+  await b.write(Buffer.from('FROM_B\n'))
   const line = await linePromise
-  expect(String(line)).toBe('FROM_B')
+  expect(line).toBe('FROM_B')
 
-  const closeA = waitFor(a, 'close')
-  const closeB = waitFor(b, 'close')
-  a.close()
-  b.close()
-  await Promise.all([closeA, closeB])
+  await Promise.all([a.close(), b.close()])
 })
 
 test.serial('binary: non-ASCII bytes arrive uncorrupted', async () => {
   if (!hasVirtualPorts) return console.log('skipped: no virtual ports')
 
-  const a = new SerialPort({ path: portA!, baudRate: 0, autoOpen: false })
-  const b = new SerialPort({ path: portB!, baudRate: 0, autoOpen: false })
+  const a = new SerialPort({ path: portA!, baudRate: 0 })
+  const b = new SerialPort({ path: portB!, baudRate: 0 })
 
-  a.open()
-  b.open()
-  await Promise.all([waitFor(a, 'open'), waitFor(b, 'open')])
+  await Promise.all([a.open(), b.open()])
 
   const payload = Buffer.from([0x01, 0x7e, 0x80, 0xfe, 0xff, 0x42])
   const received: Buffer[] = []
   b.on('data', (chunk: Buffer) => received.push(chunk))
 
-  await new Promise<void>((resolve, reject) => a.write(payload, (err) => (err ? reject(err) : resolve())))
+  await a.write(payload)
   await new Promise((resolve) => setTimeout(resolve, 300))
 
   const total = Buffer.concat(received)
   expect(total).toEqual(payload)
 
-  const closeA = waitFor(a, 'close')
-  const closeB = waitFor(b, 'close')
-  a.close()
-  b.close()
-  await Promise.all([closeA, closeB])
+  await Promise.all([a.close(), b.close()])
 })
 
 test.serial('drain: resolves after write without error', async () => {
   if (!hasVirtualPorts) return console.log('skipped: no virtual ports')
 
-  const a = new SerialPort({ path: portA!, baudRate: 0, autoOpen: false })
-  const b = new SerialPort({ path: portB!, baudRate: 0, autoOpen: false })
+  const a = new SerialPort({ path: portA!, baudRate: 0 })
+  const b = new SerialPort({ path: portB!, baudRate: 0 })
   a.on('error', (err) => console.log('port A error:', err.message))
   b.on('error', (err) => console.log('port B error:', err.message))
 
-  a.open()
-  b.open()
-  await Promise.all([waitFor(a, 'open'), waitFor(b, 'open')])
+  await Promise.all([a.open(), b.open()])
 
-  await new Promise<void>((resolve, reject) => a.write(Buffer.from('DRAIN_TEST\n'), (err) => (err ? reject(err) : resolve())))
-  const err = await new Promise<Error | null>((resolve) => a.drain(resolve))
-  expect(err).toBe(null)
+  await a.write(Buffer.from('DRAIN_TEST\n'))
+  await a.drain()
 
-  const closeA = waitFor(a, 'close')
-  const closeB = waitFor(b, 'close')
-  a.close()
-  b.close()
-  await Promise.all([closeA, closeB])
+  await Promise.all([a.close(), b.close()])
 })
 
 test.serial('large write: payload larger than the 4 KiB read buffer arrives complete', async () => {
   if (!hasVirtualPorts) return console.log('skipped: no virtual ports')
 
-  const a = new SerialPort({ path: portA!, baudRate: 0, autoOpen: false })
-  const b = new SerialPort({ path: portB!, baudRate: 0, autoOpen: false })
+  const a = new SerialPort({ path: portA!, baudRate: 0 })
+  const b = new SerialPort({ path: portB!, baudRate: 0 })
 
-  a.open()
-  b.open()
-  await Promise.all([waitFor(a, 'open'), waitFor(b, 'open')])
+  await Promise.all([a.open(), b.open()])
 
   const size = 8192
   const payload = Buffer.alloc(size, 0x42)
   const received: Buffer[] = []
   b.on('data', (chunk: Buffer) => received.push(chunk))
 
-  await new Promise<void>((resolve, reject) => a.write(payload, (err) => (err ? reject(err) : resolve())))
+  await a.write(payload)
   await new Promise((resolve) => setTimeout(resolve, 500))
 
   const total = Buffer.concat(received)
   expect(total.length).toBe(size)
   expect(total).toEqual(payload)
 
-  const closeA = waitFor(a, 'close')
-  const closeB = waitFor(b, 'close')
-  a.close()
-  b.close()
-  await Promise.all([closeA, closeB])
+  await Promise.all([a.close(), b.close()])
 })

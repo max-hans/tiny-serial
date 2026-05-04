@@ -91,49 +91,44 @@ describe('RegexParser (Bun)', () => {
 
 describe('MockSerialPort (Bun)', () => {
   it('captures written data', async () => {
-    const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
-    port.open()
-    await waitFor(port, 'open')
-    port.write(Buffer.from('HELLO'))
+    const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600 })
+    await port.open()
+    await port.write(Buffer.from('HELLO'))
     expect(port.getWrittenData()).toEqual(Buffer.from('HELLO'))
   })
 
   it('mockReply responds to trigger', async () => {
-    const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
-    port.open()
-    await waitFor(port, 'open')
+    const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600 })
+    await port.open()
     port.mockReply('AT\r', 'OK\r', 10)
     const dataPromise = waitFor(port, 'data')
-    port.write(Buffer.from('AT\r'))
+    await port.write(Buffer.from('AT\r'))
     const data = await dataPromise
     expect(data).toEqual(Buffer.from('OK\r'))
   })
 
   it('simulateFault timeout suppresses replies', async () => {
-    const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
-    port.open()
-    await waitFor(port, 'open')
+    const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600 })
+    await port.open()
     port.mockReply('PING', 'PONG', 10)
     port.simulateFault('timeout')
     let received = false
     port.on('data', () => {
       received = true
     })
-    port.write(Buffer.from('PING'))
+    await port.write(Buffer.from('PING'))
     await new Promise((r) => setTimeout(r, 50))
     expect(received).toBe(false)
   })
 
-  it('drain resolves with null', async () => {
-    const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
-    port.open()
-    await waitFor(port, 'open')
-    const err = await new Promise<Error | null>((resolve) => port.drain(resolve))
-    expect(err).toBe(null)
+  it('drain() resolves with no error', async () => {
+    const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600 })
+    await port.open()
+    await expect(port.drain()).resolves.toBeUndefined()
   })
 
   it('pins.setCTS emits pin-change', async () => {
-    const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600, autoOpen: false })
+    const port = new MockSerialPort({ path: '/dev/null', baudRate: 9600 })
     const eventPromise = waitFor(port, 'pin-change') as Promise<{ pin: string; value: boolean }>
     port.pins.setCTS(true)
     const event = await eventPromise

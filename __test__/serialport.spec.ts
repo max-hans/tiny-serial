@@ -2,7 +2,6 @@ import { test, expect } from 'bun:test'
 import { SerialPort } from '../lib/SerialPort.js'
 
 test('SerialPort: throws TypeError for empty path', () => {
-  // Bun/Jest: toThrow(Regex) checks the message
   expect(() => new SerialPort({ path: '', baudRate: 9600 })).toThrow(/requires a path/)
 })
 
@@ -15,7 +14,7 @@ test('SerialPort: throws TypeError for undefined baudRate', () => {
 })
 
 test('SerialPort: baudRate 0 is valid (skips baud-rate config on PTY devices)', () => {
-  expect(() => new SerialPort({ path: '/dev/tty', baudRate: 0, autoOpen: false })).not.toThrow()
+  expect(() => new SerialPort({ path: '/dev/tty', baudRate: 0 })).not.toThrow()
 })
 
 test('SerialPort: throws TypeError for invalid dataBits', () => {

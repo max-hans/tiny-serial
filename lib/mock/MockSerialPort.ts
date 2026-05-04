@@ -1,4 +1,4 @@
-import { Duplex } from 'node:stream'
+import { Readable } from 'node:stream'
 import type { SerialPortOptions, PinName } from '../types.js'
 
 type FaultType = 'disconnect' | 'fragmentation' | 'timeout'
@@ -22,7 +22,7 @@ function toBuffer(value: Buffer | string): Buffer {
   return typeof value === 'string' ? Buffer.from(value) : value
 }
 
-export class MockSerialPort extends Duplex {
+export class MockSerialPort extends Readable {
   public readonly path: string
   public isOpen: boolean
   public readonly pins: MockPins
@@ -66,76 +66,50 @@ export class MockSerialPort extends Duplex {
         return self._pinState['DCD']
       },
     }
-
-    if (options.autoOpen !== false) {
-      process.nextTick(() => this.open())
-    }
   }
 
-  _read(_size: number): void {
-    // Data is pushed via _injectData — nothing to do here
+  _read(_size: number): void {}
+
+  async open(): Promise<void> {
+    this.isOpen = true
+    this.emit('open')
   }
 
-  _write(chunk: Buffer, _encoding: BufferEncoding, callback: (err?: Error | null) => void): void {
-    this._written.push(Buffer.from(chunk))
+  async close(): Promise<void> {
+    this.isOpen = false
+    this.emit('close')
+  }
+
+  async drain(): Promise<void> {}
+
+  async write(chunk: Buffer | string): Promise<void> {
+    const buf = toBuffer(chunk)
+    this._written.push(Buffer.from(buf))
 
     if (!this._faults.has('timeout')) {
       for (const reply of this._replies) {
-        if (chunk.includes(reply.trigger)) {
-          const response = reply.response
-          const delay = reply.delay
-          setTimeout(() => this._injectData(response), delay)
+        if (buf.includes(reply.trigger)) {
+          setTimeout(() => this._injectData(reply.response), reply.delay)
           break
         }
       }
     }
-
-    callback()
   }
 
-  open(callback?: (err: Error | null) => void): void {
-    process.nextTick(() => {
-      this.isOpen = true
-      this.emit('open')
-      callback?.(null)
-    })
-  }
-
-  close(callback?: (err: Error | null) => void): void {
-    process.nextTick(() => {
-      this.isOpen = false
-      this.emit('close')
-      callback?.(null)
-    })
-  }
-
-  drain(callback?: (err: Error | null) => void): void {
-    process.nextTick(() => callback?.(null))
-  }
-
-  /** Register a declarative request/response pair. */
   mockReply(trigger: Buffer | string, response: Buffer | string, delay = 0): this {
     this._replies.push({ trigger: toBuffer(trigger), response: toBuffer(response), delay })
     return this
   }
 
-  /** Returns a single Buffer containing all data written to the port so far. */
   getWrittenData(): Buffer {
     return Buffer.concat(this._written)
   }
 
-  /** Clears the written data history. */
   clearWrittenData(): this {
     this._written = []
     return this
   }
 
-  /**
-   * Activate a fault simulation:
-   * - 'disconnect': emits a close event immediately
-   * - 'fragmentation': future _injectData calls split data into 1-byte chunks
-   * - 'timeout': suppresses all mockReply responses
-   */
   simulateFault(type: FaultType): this {
     if (type === 'disconnect') {
       this.isOpen = false
@@ -147,13 +121,11 @@ export class MockSerialPort extends Duplex {
     return this
   }
 
-  /** Remove an active fault. */
   clearFault(type: FaultType): this {
     this._faults.delete(type)
     return this
   }
 
-  /** Inject data into the stream as if it arrived from hardware. */
   _injectData(data: Buffer): void {
     if (this._faults.has('fragmentation')) {
       for (let i = 0; i < data.length; i++) {
